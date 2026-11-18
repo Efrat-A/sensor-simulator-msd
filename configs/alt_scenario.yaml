@@ -1,0 +1,42 @@
+# Example custom scenario: demonstrates that bar positions/widths, motion,
+# sensor noise, and classifier thresholds are purely a configuration change
+# -- none of this touches sensor_sim's Python code.
+#
+# Run with:
+#   sensor-sim --config configs/alt_scenario.yaml
+
+regions:
+  A:
+    low: -40.0
+    high: -28.0
+  B:
+    low: -10.0
+    high: 0.0
+
+motion:
+  waypoints:
+    - -50.0
+    - -34.0 # inside Region A
+    - -20.0
+    - -5.0 # inside Region B
+    - 10.0
+  avg_speed: 3.0
+  speed_variability: 0.5
+  speed_noise_std: 0.2
+  speed_period: 10.0
+  min_speed: 0.4
+  waypoint_tolerance: 0.6
+  seed: 7
+
+sensor:
+  noise_std: 0.25
+
+classifier:
+  crossing_threshold: 0.4
+  rearm_threshold: 2.0
+  # rearm_threshold must stay below both regions' half-widths (6.0 and 5.0 here)
+
+simulation:
+  dt: 0.1
+  duration: 150.0
+  realtime_factor: 6.0

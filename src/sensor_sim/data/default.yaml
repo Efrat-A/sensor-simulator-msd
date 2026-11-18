@@ -1,0 +1,43 @@
+# Default scenario: Region A and Region B are side by side -- adjacent
+# intervals on the X axis that share a bar (A's high bar == B's low bar) --
+# so the route crosses directly from A into B with no "outside" gap between
+# them, as well as approaching/leaving the pair from open space on each end.
+#
+# This file is the "configurable in code without touching code" surface the
+# assignment asks for: bar positions, motion profile, sensor noise, and
+# classifier sensitivity are all data here, not constants in the Python.
+
+regions:
+  A:
+    low: 0.0
+    high: 10.0
+  B:
+    low: 10.0
+    high: 20.0
+
+motion:
+  waypoints:
+    - -15.0
+    - 5.0 # inside Region A
+    - 15.0 # inside Region B -- straight through the shared A/B bar at x=10
+    - 35.0
+  avg_speed: 2.2 # m/s
+  speed_variability: 0.6 # relative amplitude of the speed oscillation
+  speed_noise_std: 0.15
+  speed_period: 14.0 # seconds per speed-up/slow-down cycle
+  min_speed: 0.3
+  waypoint_tolerance: 0.6
+  seed: 42
+
+sensor:
+  noise_std: 0.15 # Gaussian noise added to each distance reading
+
+classifier:
+  crossing_threshold: 0.3 # how close to a bar counts as "crossing" it
+  rearm_threshold: 1.5 # must recede past this before the next crossing can register
+  # rearm_threshold must stay below both regions' half-widths (5.0 and 5.0 here)
+
+simulation:
+  dt: 0.1 # seconds of simulated time per tick
+  duration: 180.0 # seconds of simulated time; null = run until Ctrl+C
+  realtime_factor: 8.0 # 8x: a satisfying demo without actually waiting 3 minutes
