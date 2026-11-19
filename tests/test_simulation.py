@@ -1,6 +1,8 @@
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 from sensor_sim.classifier import RealTimeClassifier, RegionState
 from sensor_sim.config import AppConfig, ClassifierConfig
 from sensor_sim.simulation import pace, simulate_ticks
@@ -46,6 +48,19 @@ def test_zero_duration_yields_exactly_one_tick_at_t_zero():
     ticks = list(simulate_ticks(short_config(duration=0.0)))
     assert len(ticks) == 1
     assert ticks[0].t == 0.0
+
+
+@pytest.mark.parametrize("config_path", sorted(CONFIGS_DIR.glob("*.yaml")), ids=lambda p: p.name)
+def test_every_packaged_example_config_loads_and_runs(config_path):
+    """The README and --help point people at every file in configs/ by
+    name; nothing else guarantees one of them still parses and runs after
+    a future change to the config schema. (The built-in default is covered
+    separately by AppConfig.default() in test_config.py.)"""
+    config = AppConfig.from_yaml(config_path)
+    short = replace(config, simulation=replace(config.simulation, duration=5.0))
+    ticks = list(simulate_ticks(short))
+    assert len(ticks) > 1
+    assert all(tick.dist_a >= 0.0 and tick.dist_b >= 0.0 for tick in ticks)
 
 
 def test_overlap_scenario_resolves_to_a_single_state_with_a_taking_priority():

@@ -68,7 +68,7 @@ def test_readings_are_never_negative():
     negative, the reported value must be clamped to >= 0."""
     motion = MotionSimulator(MotionConfig(waypoints=[(0.0, 0.0), (1.0, 0.0)], seed=0))
     region_a = Rectangle(x_low=0.0, y_low=-5.0, x_high=10.0, y_high=5.0)  # starts on an edge
-    region_b = Rectangle(x_low=100.0, y_low=-3.0, x_high=106.0, y_high=3.0)
+    region_b = Rectangle(x_low=-5.0, y_low=0.0, x_high=5.0, y_high=10.0)  # also starts on an edge
     sim = SensorSimulator(
         motion=motion,
         region_a=region_a,
@@ -80,3 +80,4 @@ def test_readings_are_never_negative():
 
     for _ in range(1000):
         assert sensor.get_dist_a() >= 0.0
+        assert sensor.get_dist_b() >= 0.0

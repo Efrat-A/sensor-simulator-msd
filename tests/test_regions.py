@@ -42,10 +42,18 @@ class TestRectangle:
         region = make_rect()
         assert region.unsigned_distance(1.0, 5.0) == pytest.approx(1.0)
 
-    def test_distance_grows_moving_away_outside_along_an_axis(self):
+    def test_distance_grows_moving_away_outside_along_the_x_axis(self):
         region = make_rect()
         assert region.unsigned_distance(-3.0, 5.0) == pytest.approx(3.0)
         assert region.unsigned_distance(13.0, 5.0) == pytest.approx(3.0)
+
+    def test_distance_grows_moving_away_outside_along_the_y_axis(self):
+        """Same check as the x-axis case, but off the top/bottom edges --
+        the two axes use independent clamping in unsigned_distance, so
+        this isn't implied by the x-axis test alone."""
+        region = make_rect()
+        assert region.unsigned_distance(5.0, -3.0) == pytest.approx(3.0)
+        assert region.unsigned_distance(5.0, 13.0) == pytest.approx(3.0)
 
     def test_distance_outside_a_corner_is_euclidean(self):
         """Diagonally outside a corner, the nearest boundary point is the
