@@ -23,11 +23,12 @@ from sensor_sim.sensor import SensorSimulator
 
 @dataclass(frozen=True)
 class Tick:
-    """One simulation step. ``x`` is carried only for display — the
-    classifier below never sees it, only ``dist_a``/``dist_b``."""
+    """One simulation step. ``x``/``y`` are carried only for display — the
+    classifier below never sees them, only ``dist_a``/``dist_b``."""
 
     t: float
     x: float
+    y: float
     dist_a: float
     dist_b: float
     state: RegionState
@@ -50,10 +51,10 @@ def simulate_ticks(config: AppConfig) -> Iterator[Tick]:
     duration = config.simulation.duration
     t = 0.0
     while duration is None or t <= duration:
-        x = motion.position
+        x, y = motion.position
         dist_a, dist_b = sensor.get_dist_a(), sensor.get_dist_b()
         state = classifier.classify(dist_a, dist_b)
-        yield Tick(t=t, x=x, dist_a=dist_a, dist_b=dist_b, state=state)
+        yield Tick(t=t, x=x, y=y, dist_a=dist_a, dist_b=dist_b, state=state)
         motion.step(dt)
         t += dt
 

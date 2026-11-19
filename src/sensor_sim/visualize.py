@@ -1,7 +1,7 @@
-"""Live time-series view: x(t) against both regions' bars, and the raw
-dist_a(t)/dist_b(t) traces with the crossing threshold marked — so the
-Schmitt-trigger crossings in ``classifier.py`` are visible as they happen,
-not just their result.
+"""Live view: the sensor's true (x, y) path against both regions' boxes,
+and the raw dist_a(t)/dist_b(t) traces with the crossing threshold marked —
+so the Schmitt-trigger crossings in ``classifier.py`` are visible as they
+happen, not just their result.
 
 This is a pure display layer — it is driven one :class:`~sensor_sim.simulation.Tick`
 at a time by the CLI loop and never computes a classification itself.
@@ -9,6 +9,7 @@ at a time by the CLI loop and never computes a classification itself.
 
 from __future__ import annotations
 
+import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 
 from sensor_sim.classifier import RegionState
@@ -27,40 +28,33 @@ class LiveView:
         self._window = window_seconds
         self._t: list[float] = []
         self._x: list[float] = []
+        self._y: list[float] = []
         self._dist_a: list[float] = []
         self._dist_b: list[float] = []
 
         plt.ion()
-        self.fig, (self.ax_x, self.ax_d) = plt.subplots(2, 1, figsize=(9, 6), sharex=True)
+        self.fig, (self.ax_xy, self.ax_d) = plt.subplots(2, 1, figsize=(7, 9))
         self.fig.suptitle("Sensor simulator - live classification")
 
         region_a, region_b = config.region_a, config.region_b
-        self.ax_x.axhspan(region_a.low, region_a.high, color="tab:blue", alpha=0.15)
-        self.ax_x.axhspan(region_b.low, region_b.high, color="tab:orange", alpha=0.15)
-
-        a_bars = {region_a.low, region_a.high}
-        b_bars = {region_b.low, region_b.high}
-        shared_bars = a_bars & b_bars
-        for bar in a_bars - shared_bars:
-            self.ax_x.axhline(bar, color="tab:blue", linewidth=0.8, linestyle="--")
-        for bar in b_bars - shared_bars:
-            self.ax_x.axhline(bar, color="tab:orange", linewidth=0.8, linestyle="--")
-        for bar in shared_bars:
-            # A's and B's dashed lines would land on the exact same y and hide
-            # each other -- draw the shared bar once, distinctly, instead.
-            self.ax_x.axhline(bar, color="black", linewidth=1.6, linestyle="-")
-            self.ax_x.annotate(
-                "A/B shared bar",
-                xy=(1.0, bar),
-                xycoords=("axes fraction", "data"),
-                xytext=(-4, 4),
-                textcoords="offset points",
-                ha="right",
-                fontsize=7,
-                color="black",
+        for region, color, label in ((region_a, "tab:blue", "A"), (region_b, "tab:orange", "B")):
+            self.ax_xy.add_patch(
+                patches.Rectangle(
+                    (region.x_low, region.y_low),
+                    region.x_high - region.x_low,
+                    region.y_high - region.y_low,
+                    facecolor=color,
+                    edgecolor=color,
+                    alpha=0.2,
+                    linewidth=1.5,
+                    label=f"Region {label}",
+                )
             )
-        self.ax_x.set_ylabel("x")
-        self._autoscale_x(config)
+        self.ax_xy.set_xlabel("x")
+        self.ax_xy.set_ylabel("y")
+        self.ax_xy.set_aspect("equal", adjustable="box")
+        self.ax_xy.legend(loc="upper right", fontsize=8)
+        self._autoscale_xy(config)
 
         self.ax_d.axhline(
             config.classifier.crossing_threshold,
@@ -69,11 +63,11 @@ class LiveView:
             linewidth=1,
             label="crossing threshold",
         )
-        self.ax_d.set_ylabel("distance to nearest bar")
+        self.ax_d.set_ylabel("distance to nearest edge")
         self.ax_d.set_xlabel("t (s)")
 
-        (self._x_line,) = self.ax_x.plot([], [], "-", color="0.3", linewidth=1)
-        (self._x_point,) = self.ax_x.plot([], [], "o", markersize=8)
+        (self._xy_line,) = self.ax_xy.plot([], [], "-", color="0.3", linewidth=1)
+        (self._xy_point,) = self.ax_xy.plot([], [], "o", markersize=8)
         (self._dist_a_line,) = self.ax_d.plot(
             [], [], "-", color="tab:blue", linewidth=1, label="dist_a"
         )
@@ -82,26 +76,31 @@ class LiveView:
         )
         self.ax_d.legend(loc="upper right", fontsize=8)
 
-        self._text = self.ax_x.text(
+        self._text = self.ax_xy.text(
             0.02,
             0.98,
             "",
-            transform=self.ax_x.transAxes,
+            transform=self.ax_xy.transAxes,
             va="top",
             fontsize=10,
             fontfamily="monospace",
             bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.85},
         )
 
-    def _autoscale_x(self, config: AppConfig) -> None:
-        bounds = [config.region_a.low, config.region_a.high, config.region_b.low,
-                  config.region_b.high, *config.motion.waypoints]
-        pad = (max(bounds) - min(bounds)) * 0.1 + 1
-        self.ax_x.set_ylim(min(bounds) - pad, max(bounds) + pad)
+    def _autoscale_xy(self, config: AppConfig) -> None:
+        regions = (config.region_a, config.region_b)
+        xs = [r.x_low for r in regions] + [r.x_high for r in regions]
+        ys = [r.y_low for r in regions] + [r.y_high for r in regions]
+        xs += [wx for wx, _ in config.motion.waypoints]
+        ys += [wy for _, wy in config.motion.waypoints]
+        pad = (max(max(xs) - min(xs), max(ys) - min(ys))) * 0.1 + 1
+        self.ax_xy.set_xlim(min(xs) - pad, max(xs) + pad)
+        self.ax_xy.set_ylim(min(ys) - pad, max(ys) + pad)
 
     def update(self, tick: Tick) -> None:
         self._t.append(tick.t)
         self._x.append(tick.x)
+        self._y.append(tick.y)
         self._dist_a.append(tick.dist_a)
         self._dist_b.append(tick.dist_b)
 
@@ -109,17 +108,18 @@ class LiveView:
         while len(self._t) > 1 and self._t[0] < cutoff:
             del self._t[0]
             del self._x[0]
+            del self._y[0]
             del self._dist_a[0]
             del self._dist_b[0]
 
-        self._x_line.set_data(self._t, self._x)
-        self._x_point.set_data([tick.t], [tick.x])
-        self._x_point.set_color(_STATE_COLORS[tick.state])
+        self._xy_line.set_data(self._x, self._y)
+        self._xy_point.set_data([tick.x], [tick.y])
+        self._xy_point.set_color(_STATE_COLORS[tick.state])
         self._dist_a_line.set_data(self._t, self._dist_a)
         self._dist_b_line.set_data(self._t, self._dist_b)
         self._text.set_text(f"t = {tick.t:6.1f}s\nstate = {tick.state.value}")
 
-        self.ax_x.set_xlim(self._t[0], max(self._t[-1], self._t[0] + 1e-6))
+        self.ax_d.set_xlim(self._t[0], max(self._t[-1], self._t[0] + 1e-6))
         self.ax_d.relim()
         self.ax_d.autoscale_view(scalex=False)
 

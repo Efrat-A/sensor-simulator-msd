@@ -1,10 +1,10 @@
 """Configuration model.
 
-Everything a user might want to change — region bar positions, how the
+Everything a user might want to change — region box corners, how the
 sensor moves, how noisy it is, how twitchy the classifier is — lives here as
 data, loaded from a YAML file (see ``src/sensor_sim/data/default.yaml`` and
 ``configs/*.yaml``). Nothing in the simulation, sensor, or classifier code
-hard-codes a bar position or a speed: they only ever see an :class:`AppConfig`
+hard-codes a region corner or a speed: they only ever see an :class:`AppConfig`
 built by this module, so reconfiguring the demo never means editing Python.
 """
 
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import yaml
 
-from sensor_sim.regions import Interval
+from sensor_sim.regions import Rectangle
 
 #: Region names the rest of the system is built around. Exactly these two.
 REGION_A = "A"
@@ -25,9 +25,9 @@ REGION_B = "B"
 
 @dataclass(frozen=True)
 class MotionConfig:
-    """Parameters of the waypoint-seeking, variable-speed 1D motion model."""
+    """Parameters of the waypoint-seeking, variable-speed 2D motion model."""
 
-    waypoints: list[float]
+    waypoints: list[tuple[float, float]]
     avg_speed: float = 2.0
     speed_variability: float = 0.5
     speed_noise_std: float = 0.15
@@ -61,9 +61,9 @@ class ClassifierConfig:
     """Schmitt-trigger thresholds for the crossing-detecting classifier.
 
     ``crossing_threshold`` is how close (in distance units) a reading must
-    get to a bar to register as a crossing. ``rearm_threshold`` is how far
+    get to an edge to register as a crossing. ``rearm_threshold`` is how far
     the reading must then recede before the *next* crossing can register —
-    it exists so sensor noise dithering near one bar can't be counted as
+    it exists so sensor noise dithering near one edge can't be counted as
     several crossings. It must be strictly larger than ``crossing_threshold``,
     and (checked in :class:`AppConfig`) smaller than either region's
     half-width, or the detector could never re-arm after entering a narrow
@@ -100,7 +100,7 @@ class SimulationConfig:
 
 @dataclass(frozen=True)
 class AppConfig:
-    regions: dict[str, Interval]
+    regions: dict[str, Rectangle]
     motion: MotionConfig
     sensor: SensorConfig = field(default_factory=SensorConfig)
     classifier: ClassifierConfig = field(default_factory=ClassifierConfig)
@@ -120,11 +120,11 @@ class AppConfig:
                 )
 
     @property
-    def region_a(self) -> Interval:
+    def region_a(self) -> Rectangle:
         return self.regions[REGION_A]
 
     @property
-    def region_b(self) -> Interval:
+    def region_b(self) -> Rectangle:
         return self.regions[REGION_B]
 
     @classmethod
@@ -142,11 +142,16 @@ class AppConfig:
     @classmethod
     def from_dict(cls, raw: dict) -> AppConfig:
         regions = {
-            name: Interval(low=spec["low"], high=spec["high"])
+            name: Rectangle(
+                x_low=spec["low"][0],
+                y_low=spec["low"][1],
+                x_high=spec["high"][0],
+                y_high=spec["high"][1],
+            )
             for name, spec in raw["regions"].items()
         }
         motion_raw = dict(raw["motion"])
-        motion_raw["waypoints"] = [float(p) for p in motion_raw["waypoints"]]
+        motion_raw["waypoints"] = [(float(p[0]), float(p[1])) for p in motion_raw["waypoints"]]
         return cls(
             regions=regions,
             motion=MotionConfig(**motion_raw),

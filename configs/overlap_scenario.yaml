@@ -1,25 +1,25 @@
-# Example custom scenario: Region A and Region B genuinely overlap (A's
-# upper half coincides with B's lower half), demonstrating that the
-# classifier and config loader support overlapping regions just as well as
-# disjoint or merely-adjacent ones -- RealTimeClassifier always returns a
-# single state, with Region A taking priority while inside the shared span.
+# Example custom scenario: Region A and Region B genuinely overlap (a
+# 4x4 box where their edges intersect), demonstrating that the classifier
+# and config loader support overlapping regions just as well as disjoint
+# ones -- RealTimeClassifier always returns a single state, with Region A
+# taking priority while inside the shared box.
 #
 # Run with:
 #   sensor-sim --config configs/overlap_scenario.yaml
 
 regions:
   A:
-    low: 0.0
-    high: 10.0
+    low: [0.0, 0.0]
+    high: [10.0, 10.0]
   B:
-    low: 6.0
-    high: 16.0 # overlaps Region A over [6, 10]
+    low: [6.0, 6.0]
+    high: [16.0, 16.0] # overlaps Region A over the box [6,10] x [6,10]
 
 motion:
   waypoints:
-    - -10.0
-    - 8.0 # inside the A/B overlap
-    - 25.0
+    - [-10.0, -10.0]
+    - [8.0, 8.0] # inside the A/B overlap
+    - [25.0, 25.0]
   avg_speed: 2.5
   speed_variability: 0.5
   speed_noise_std: 0.15

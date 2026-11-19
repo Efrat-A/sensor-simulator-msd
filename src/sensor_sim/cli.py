@@ -19,7 +19,7 @@ _STATE_LABEL = {
 
 def _print_tick(tick: Tick) -> None:
     print(
-        f"\rt={tick.t:7.1f}s  x={tick.x:+7.2f}  "
+        f"\rt={tick.t:7.1f}s  x={tick.x:+7.2f}  y={tick.y:+7.2f}  "
         f"dist_a={tick.dist_a:6.2f}  dist_b={tick.dist_b:6.2f}  -> {_STATE_LABEL[tick.state]}",
         end="",
         flush=True,

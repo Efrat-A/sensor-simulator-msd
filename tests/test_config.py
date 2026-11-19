@@ -12,11 +12,11 @@ from sensor_sim.config import (
 def _base_raw(region_a=None, region_b=None, classifier=None) -> dict:
     return {
         "regions": {
-            "A": region_a or {"low": 0.0, "high": 10.0},
-            "B": region_b or {"low": 20.0, "high": 30.0},
+            "A": region_a or {"low": [0.0, 0.0], "high": [10.0, 10.0]},
+            "B": region_b or {"low": [20.0, 0.0], "high": [30.0, 10.0]},
         },
         "motion": {
-            "waypoints": [-10.0, 40.0],
+            "waypoints": [[-10.0, 0.0], [40.0, 0.0]],
             "seed": 1,
         },
         "classifier": classifier or {"crossing_threshold": 0.3, "rearm_threshold": 1.0},
@@ -31,9 +31,9 @@ def test_default_config_loads():
 
 def test_from_dict_builds_regions():
     config = AppConfig.from_dict(_base_raw())
-    assert config.region_a.low == 0.0
-    assert config.region_a.high == 10.0
-    assert config.region_b.low == 20.0
+    assert config.region_a.x_low == 0.0
+    assert config.region_a.x_high == 10.0
+    assert config.region_b.x_low == 20.0
 
 
 def test_missing_region_raises():
@@ -44,21 +44,28 @@ def test_missing_region_raises():
 
 
 def test_overlapping_regions_are_allowed():
-    raw = _base_raw(region_a={"low": 0.0, "high": 10.0}, region_b={"low": 5.0, "high": 15.0})
+    raw = _base_raw(
+        region_a={"low": [0.0, 0.0], "high": [10.0, 10.0]},
+        region_b={"low": [5.0, 5.0], "high": [15.0, 15.0]},
+    )
     config = AppConfig.from_dict(raw)  # must not raise
-    assert config.region_a.high > config.region_b.low
+    assert config.region_a.x_high > config.region_b.x_low
 
 
 def test_touching_regions_are_not_overlapping():
-    raw = _base_raw(region_a={"low": 0.0, "high": 10.0}, region_b={"low": 10.0, "high": 20.0})
+    raw = _base_raw(
+        region_a={"low": [0.0, 0.0], "high": [10.0, 10.0]},
+        region_b={"low": [10.0, 0.0], "high": [20.0, 10.0]},
+    )
     AppConfig.from_dict(raw)  # must not raise
 
 
 def test_rearm_threshold_must_be_smaller_than_region_half_width():
-    # Region A has half-width 2.0; rearm_threshold of 3.0 would strand the
-    # detector "inside" forever, since distance can never exceed 3.0 there.
+    # Region A has half-width 2.0 (the shorter side, 4.0, halved);
+    # rearm_threshold of 3.0 would strand the detector "inside" forever,
+    # since distance can never exceed 2.0 there.
     raw = _base_raw(
-        region_a={"low": 0.0, "high": 4.0},
+        region_a={"low": [0.0, 0.0], "high": [4.0, 10.0]},
         classifier={"crossing_threshold": 0.3, "rearm_threshold": 3.0},
     )
     with pytest.raises(ValueError, match="half-width"):
@@ -69,7 +76,7 @@ def test_rearm_threshold_exactly_equal_to_half_width_is_also_rejected():
     # The boundary case: distance can approach but never exceed the
     # half-width at the region's exact center, so it must never re-arm.
     raw = _base_raw(
-        region_a={"low": 0.0, "high": 4.0},
+        region_a={"low": [0.0, 0.0], "high": [4.0, 10.0]},
         classifier={"crossing_threshold": 0.3, "rearm_threshold": 2.0},
     )
     with pytest.raises(ValueError, match="half-width"):
@@ -93,7 +100,7 @@ class TestClassifierConfig:
 
 class TestMotionConfig:
     def _kwargs(self, **overrides):
-        defaults = dict(waypoints=[0.0, 10.0], seed=1)
+        defaults = dict(waypoints=[(0.0, 0.0), (10.0, 0.0)], seed=1)
         defaults.update(overrides)
         return defaults
 

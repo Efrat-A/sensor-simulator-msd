@@ -1,11 +1,11 @@
-"""Run-time region membership from *unsigned* nearest-bar distances.
+"""Run-time region membership from *unsigned* nearest-edge distances.
 
-``get_dist_a()``/``get_dist_b()`` report distance-to-nearest-bar with no
+``get_dist_a()``/``get_dist_b()`` report distance-to-nearest-edge with no
 sign, so a single reading cannot say "inside" or "outside": a point just
-inside a region near its ``low`` bar and a point just outside that same
-bar report the same small positive number. In fact, from magnitude alone,
-"approached a bar and turned back without crossing it" and "crossed the
-bar and kept going" produce the *identical* signal shape (distance dips
+inside a region near one of its edges and a point just outside that same
+edge report the same small positive number. In fact, from magnitude alone,
+"approached an edge and turned back without crossing it" and "crossed the
+edge and kept going" produce the *identical* signal shape (distance dips
 towards 0, then rises again) — there is no way to tell them apart from
 distance readings alone. That is an honest limitation of a magnitude-only
 proximity sensor, not a bug to engineer around; the usual real-world answer
@@ -21,7 +21,7 @@ it sees — a Schmitt-trigger edge detector per region:
   above ``rearm_threshold`` since the last toggle;
 - a crossing registers, and membership flips, the moment the distance
   falls below ``crossing_threshold`` while armed;
-- it then de-arms, so sensor noise dithering near zero at the same bar
+- it then de-arms, so sensor noise dithering near zero at the same edge
   cannot register as several crossings.
 
 Each region's detector keeps only two booleans (``inside``, ``armed``) —
@@ -33,12 +33,12 @@ One consequence worth stating plainly: with no sign in the reading, there
 is no way to know the *initial* membership from distance alone either.
 This classifier assumes the sensor starts outside both regions (true for
 the packaged scenarios, which all begin far from both); if it starts
-inside a region without ever crossing a bar during observation, it will
+inside a region without ever crossing an edge during observation, it will
 never be classified as inside that region.
 
 Region A and Region B are each tracked by their own, fully independent
 detector, so this handles disjoint regions, regions that merely touch
-(share a bar), and genuinely overlapping regions identically -- the
+(share an edge), and genuinely overlapping regions identically -- the
 detectors don't know about each other. The classifier always reports a
 single state, though: if both happen to be inside at once (only possible
 when A and B overlap), Region A takes priority.
@@ -58,7 +58,7 @@ class RegionState(str, Enum):
 
 
 class _CrossingDetector:
-    """Toggles an inside/outside flag on each bar crossing of one region."""
+    """Toggles an inside/outside flag on each edge crossing of one region."""
 
     def __init__(self, crossing_threshold: float, rearm_threshold: float) -> None:
         self._crossing_threshold = crossing_threshold

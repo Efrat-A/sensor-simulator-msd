@@ -8,10 +8,10 @@ level sensor instance that :func:`configure` installs; everything downstream
 (the classifier, the simulation loop) only ever calls the two bare functions,
 never reaches past them to read true position or region objects directly.
 
-Readings are the *unsigned* distance to the nearer bar of each region, plus
-Gaussian measurement noise, clamped at 0 — a real distance sensor cannot
-report a negative reading, and the sign is exactly the information this
-sensor does not have (see ``classifier.py``).
+Readings are the *unsigned* distance to the nearest edge of each region,
+plus Gaussian measurement noise, clamped at 0 — a real distance sensor
+cannot report a negative reading, and the sign is exactly the information
+this sensor does not have (see ``classifier.py``).
 """
 
 from __future__ import annotations
@@ -20,17 +20,17 @@ import numpy as np
 
 from sensor_sim.config import SensorConfig
 from sensor_sim.motion import MotionSimulator
-from sensor_sim.regions import Interval
+from sensor_sim.regions import Rectangle
 
 
 class SensorSimulator:
-    """Produces noisy unsigned-distance-to-nearest-bar readings for one moving point."""
+    """Produces noisy unsigned-distance-to-nearest-edge readings for one moving point."""
 
     def __init__(
         self,
         motion: MotionSimulator,
-        region_a: Interval,
-        region_b: Interval,
+        region_a: Rectangle,
+        region_b: Rectangle,
         config: SensorConfig,
         seed: int | None = None,
     ) -> None:
@@ -40,8 +40,9 @@ class SensorSimulator:
         self._noise_std = config.noise_std
         self._rng = np.random.default_rng(seed)
 
-    def _noisy_distance(self, region: Interval) -> float:
-        true_distance = region.unsigned_distance(self._motion.position)
+    def _noisy_distance(self, region: Rectangle) -> float:
+        x, y = self._motion.position
+        true_distance = region.unsigned_distance(x, y)
         noisy = true_distance + self._rng.normal(0.0, self._noise_std)
         return max(0.0, noisy)
 
@@ -68,10 +69,10 @@ def _require_sensor() -> SensorSimulator:
 
 
 def get_dist_a() -> float:
-    """Simulated unsigned distance from the sensor to Region A's nearer bar."""
+    """Simulated unsigned distance from the sensor to Region A's nearest edge."""
     return _require_sensor().read_dist_a()
 
 
 def get_dist_b() -> float:
-    """Simulated unsigned distance from the sensor to Region B's nearer bar."""
+    """Simulated unsigned distance from the sensor to Region B's nearest edge."""
     return _require_sensor().read_dist_b()

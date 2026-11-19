@@ -1,25 +1,26 @@
-# Example custom scenario: demonstrates that bar positions/widths, motion,
+# Example custom scenario: demonstrates that region corners/sizes, motion,
 # sensor noise, and classifier thresholds are purely a configuration change
-# -- none of this touches sensor_sim's Python code.
+# -- none of this touches sensor_sim's Python code. Region A and B are
+# disjoint, placed and shaped differently than the default scenario.
 #
 # Run with:
 #   sensor-sim --config configs/alt_scenario.yaml
 
 regions:
   A:
-    low: -40.0
-    high: -28.0
+    low: [-40.0, -6.0]
+    high: [-28.0, 6.0]
   B:
-    low: -10.0
-    high: 0.0
+    low: [-10.0, -15.0]
+    high: [0.0, -5.0]
 
 motion:
   waypoints:
-    - -50.0
-    - -34.0 # inside Region A
-    - -20.0
-    - -5.0 # inside Region B
-    - 10.0
+    - [-50.0, -10.0]
+    - [-34.0, 0.0] # inside Region A
+    - [-20.0, -18.0]
+    - [-5.0, -10.0] # inside Region B
+    - [10.0, 5.0]
   avg_speed: 3.0
   speed_variability: 0.5
   speed_noise_std: 0.2

@@ -3,7 +3,7 @@ import pytest
 from sensor_sim import sensor
 from sensor_sim.config import MotionConfig, SensorConfig
 from sensor_sim.motion import MotionSimulator
-from sensor_sim.regions import Interval
+from sensor_sim.regions import Rectangle
 from sensor_sim.sensor import SensorSimulator
 
 
@@ -20,9 +20,9 @@ def test_get_dist_a_requires_configure_first():
 
 
 def test_get_dist_a_and_b_reflect_true_distance_within_noise():
-    motion = MotionSimulator(MotionConfig(waypoints=[0.0, 1.0], seed=0))
-    region_a = Interval(low=-3.0, high=3.0)  # motion starts at x=0, center of A
-    region_b = Interval(low=100.0, high=106.0)  # far away
+    motion = MotionSimulator(MotionConfig(waypoints=[(0.0, 0.0), (1.0, 0.0)], seed=0))
+    region_a = Rectangle(x_low=-3.0, y_low=-3.0, x_high=3.0, y_high=3.0)  # centered on start
+    region_b = Rectangle(x_low=100.0, y_low=-3.0, x_high=106.0, y_high=3.0)  # far away
     sim = SensorSimulator(
         motion=motion,
         region_a=region_a,
@@ -34,7 +34,7 @@ def test_get_dist_a_and_b_reflect_true_distance_within_noise():
 
     dist_a = sensor.get_dist_a()
     dist_b = sensor.get_dist_b()
-    assert dist_a == pytest.approx(3.0, abs=0.2)  # distance to nearer bar from center
+    assert dist_a == pytest.approx(3.0, abs=0.2)  # distance to nearer edge from center
     assert dist_b == pytest.approx(100.0, abs=0.2)
 
 
@@ -46,9 +46,9 @@ def test_repeated_reads_without_stepping_motion_track_the_same_position():
     here is clock-driven) must track the same true position, differing
     only by fresh measurement noise each call -- never drifting simply
     because time passed without a step()."""
-    motion = MotionSimulator(MotionConfig(waypoints=[0.0, 1.0], seed=0))
-    region_a = Interval(low=-3.0, high=3.0)
-    region_b = Interval(low=100.0, high=106.0)
+    motion = MotionSimulator(MotionConfig(waypoints=[(0.0, 0.0), (1.0, 0.0)], seed=0))
+    region_a = Rectangle(x_low=-3.0, y_low=-3.0, x_high=3.0, y_high=3.0)
+    region_b = Rectangle(x_low=100.0, y_low=-3.0, x_high=106.0, y_high=3.0)
     sim = SensorSimulator(
         motion=motion,
         region_a=region_a,
@@ -60,15 +60,15 @@ def test_repeated_reads_without_stepping_motion_track_the_same_position():
 
     readings = [sensor.get_dist_a() for _ in range(50)]
     assert all(r == pytest.approx(3.0, abs=0.3) for r in readings)
-    assert motion.position == 0.0  # never moved -- nothing ever called step()
+    assert motion.position == (0.0, 0.0)  # never moved -- nothing ever called step()
 
 
 def test_readings_are_never_negative():
     """Even with noise that would push the true (near-zero) distance
     negative, the reported value must be clamped to >= 0."""
-    motion = MotionSimulator(MotionConfig(waypoints=[0.0, 1.0], seed=0))
-    region_a = Interval(low=0.0, high=10.0)  # motion starts exactly on a bar
-    region_b = Interval(low=100.0, high=106.0)
+    motion = MotionSimulator(MotionConfig(waypoints=[(0.0, 0.0), (1.0, 0.0)], seed=0))
+    region_a = Rectangle(x_low=0.0, y_low=-5.0, x_high=10.0, y_high=5.0)  # starts on an edge
+    region_b = Rectangle(x_low=100.0, y_low=-3.0, x_high=106.0, y_high=3.0)
     sim = SensorSimulator(
         motion=motion,
         region_a=region_a,
