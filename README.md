@@ -203,6 +203,27 @@ ruff check .           # lint
 mypy src               # types
 ```
 
+### Allure report
+
+Every test attaches its `sensor_sim` debug logs (state transitions, waypoints
+reached) to an [Allure](https://allurereport.org) report, so unexpected
+behavior can be diagnosed from the report instead of re-running with a
+debugger. Spatial tests (motion paths, region distances, classified routes)
+can also attach a plot of what they actually computed, via each test file's
+`attach_figure(...)` helper call -- those calls are commented out by default
+since generating a plot on every run is heavy; uncomment the ones you need
+while debugging. `allure.attach()` is a no-op during a plain `pytest`/`make
+test` run, so none of this costs anything day-to-day.
+
+```bash
+make allure-report      # runs the suite, builds the HTML report, opens it
+```
+
+Requires the [Allure commandline](https://allurereport.org/docs/gettingstarted/)
+(`brew install allure`) and a JDK on `PATH` (`brew install openjdk`, then
+either `sudo ln -sfn "$(brew --prefix openjdk)/libexec/openjdk.jdk" /Library/Java/JavaVirtualMachines/openjdk.jdk`
+or add `` `brew --prefix openjdk`/bin `` to `PATH`).
+
 Notable coverage:
 - `Rectangle.unsigned_distance`: zero on every edge (including a corner),
   peaks at the center while inside, equal just inside and just outside the

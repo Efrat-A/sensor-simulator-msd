@@ -1,4 +1,4 @@
-.PHONY: venv install run run-noplot test lint typecheck check clean
+.PHONY: venv install run run-noplot test test-allure allure-report lint typecheck check clean
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -20,6 +20,14 @@ run-noplot:
 test:
 	$(VENV)/bin/pytest -q
 
+test-allure:
+	rm -rf allure-results
+	$(VENV)/bin/pytest -q --alluredir=allure-results
+
+allure-report: test-allure
+	allure generate allure-results -o allure-report --clean
+	allure open allure-report
+
 lint:
 	$(VENV)/bin/ruff check .
 
@@ -29,5 +37,5 @@ typecheck:
 check: lint typecheck test
 
 clean:
-	rm -rf $(VENV) .pytest_cache .ruff_cache .mypy_cache src/*.egg-info
+	rm -rf $(VENV) .pytest_cache .ruff_cache .mypy_cache src/*.egg-info allure-results allure-report
 	find . -name "__pycache__" -not -path "./$(VENV)/*" -exec rm -rf {} +

@@ -1,5 +1,8 @@
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
 import pytest
 
+# from conftest import attach_figure  # unused while the plot call below is commented out
 from sensor_sim import sensor
 from sensor_sim.config import MotionConfig, SensorConfig
 from sensor_sim.motion import MotionSimulator
@@ -12,6 +15,35 @@ def _reset_global_sensor():
     sensor._active_sensor = None
     yield
     sensor._active_sensor = None
+
+
+# The attach_figure() call below is commented out: generating and attaching
+# a plot on every run is heavy for routine `make check` runs. Uncomment it
+# to get that test's picture in the Allure report.
+def regions_and_point_figure(region_a: Rectangle, region_b: Rectangle, point: tuple[float, float]):
+    """Draw both regions plus the sensor's true position, so a reported
+    distance can be checked by eye against the picture."""
+    fig, ax = plt.subplots()
+    for region, color, label in [(region_a, "tab:blue", "A"), (region_b, "tab:orange", "B")]:
+        ax.add_patch(
+            patches.Rectangle(
+                (region.x_low, region.y_low),
+                region.x_high - region.x_low,
+                region.y_high - region.y_low,
+                fill=False,
+                edgecolor=color,
+                label=label,
+            )
+        )
+    ax.scatter(*point, color="tab:red", zorder=3, label="true position")
+    ax.legend()
+    ax.set_aspect("equal")
+    margin = 2.0
+    xs = [region_a.x_low, region_a.x_high, region_b.x_low, region_b.x_high, point[0]]
+    ys = [region_a.y_low, region_a.y_high, region_b.y_low, region_b.y_high, point[1]]
+    ax.set_xlim(min(xs) - margin, max(xs) + margin)
+    ax.set_ylim(min(ys) - margin, max(ys) + margin)
+    return fig
 
 
 def test_get_dist_a_requires_configure_first():
@@ -34,6 +66,10 @@ def test_get_dist_a_and_b_reflect_true_distance_within_noise():
 
     dist_a = sensor.get_dist_a()
     dist_b = sensor.get_dist_b()
+    # attach_figure(
+    #     regions_and_point_figure(region_a, region_b, motion.position),
+    #     "true position vs. both regions",
+    # )
     assert dist_a == pytest.approx(3.0, abs=0.2)  # distance to nearer edge from center
     assert dist_b == pytest.approx(100.0, abs=0.2)
 

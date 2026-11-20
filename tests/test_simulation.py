@@ -1,13 +1,39 @@
 from dataclasses import replace
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import pytest
 
+# from conftest import attach_figure  # unused while the plot calls below are commented out
 from sensor_sim.classifier import RealTimeClassifier, RegionState
 from sensor_sim.config import AppConfig, ClassifierConfig
 from sensor_sim.simulation import pace, simulate_ticks
 
 CONFIGS_DIR = Path(__file__).resolve().parent.parent / "configs"
+
+_STATE_COLORS = {
+    RegionState.OUTSIDE: "tab:gray",
+    RegionState.IN_A: "tab:blue",
+    RegionState.IN_B: "tab:orange",
+}
+
+
+# Calls to ticks_figure()/attach_figure() below are commented out:
+# generating and attaching a plot on every run is heavy for routine `make
+# check` runs. Uncomment a call to get that test's picture in the report.
+def ticks_figure(ticks, title: str) -> plt.Figure:
+    """Plot the simulated route, colored by the classifier's state at each
+    tick, so a trajectory/classification test can be checked by eye."""
+    fig, ax = plt.subplots()
+    for state, color in _STATE_COLORS.items():
+        xs = [t.x for t in ticks if t.state == state]
+        ys = [t.y for t in ticks if t.state == state]
+        if xs:
+            ax.scatter(xs, ys, s=4, color=color, label=state.value)
+    ax.set_aspect("equal")
+    ax.set_title(title)
+    ax.legend()
+    return fig
 
 
 def short_config(duration: float = 60.0) -> AppConfig:
@@ -40,6 +66,7 @@ def test_route_visits_all_three_states_over_the_default_scenario():
     """The packaged default route is designed to pass through both regions;
     a long enough run should observe all three classification states."""
     ticks = list(simulate_ticks(short_config(duration=180.0)))
+    # attach_figure(ticks_figure(ticks, "default scenario"), "default scenario route")
     seen = {tick.state for tick in ticks}
     assert seen == {RegionState.OUTSIDE, RegionState.IN_A, RegionState.IN_B}
 
@@ -59,6 +86,7 @@ def test_every_packaged_example_config_loads_and_runs(config_path):
     config = AppConfig.from_yaml(config_path)
     short = replace(config, simulation=replace(config.simulation, duration=5.0))
     ticks = list(simulate_ticks(short))
+    # attach_figure(ticks_figure(ticks, config_path.name), f"{config_path.name} route")
     assert len(ticks) > 1
     assert all(tick.dist_a >= 0.0 and tick.dist_b >= 0.0 for tick in ticks)
 
@@ -69,6 +97,7 @@ def test_overlap_scenario_resolves_to_a_single_state_with_a_taking_priority():
     with Region A taking priority while inside the shared span."""
     config = AppConfig.from_yaml(CONFIGS_DIR / "overlap_scenario.yaml")
     ticks = list(simulate_ticks(config))
+    # attach_figure(ticks_figure(ticks, "overlap scenario"), "overlap scenario route")
     seen = {tick.state for tick in ticks}
     assert seen <= {RegionState.OUTSIDE, RegionState.IN_A, RegionState.IN_B}
     assert RegionState.IN_A in seen  # the route passes through the A/B overlap
