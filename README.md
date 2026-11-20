@@ -60,6 +60,12 @@ Run a different scenario, faster:
 sensor-sim --config configs/alt_scenario.yaml --realtime-factor 20
 ```
 
+Log state transitions (region crossings, waypoints reached) to stderr while running:
+
+```bash
+sensor-sim --no-plot -v
+```
+
 Run the test suite:
 
 ```bash

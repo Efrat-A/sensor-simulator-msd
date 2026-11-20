@@ -11,11 +11,14 @@ about regions or distances — only ``sensor.py`` is allowed to turn
 
 from __future__ import annotations
 
+import logging
 import math
 
 import numpy as np
 
 from sensor_sim.config import MotionConfig
+
+logger = logging.getLogger(__name__)
 
 
 class MotionSimulator:
@@ -58,6 +61,13 @@ class MotionSimulator:
         self.y += uy * self.speed * dt
 
         if math.hypot(target_x - self.x, target_y - self.y) <= cfg.waypoint_tolerance:
+            logger.debug(
+                "reached waypoint %d at (%.3f, %.3f), advancing to waypoint %d",
+                self._waypoint_index,
+                target_x,
+                target_y,
+                (self._waypoint_index + 1) % len(cfg.waypoints),
+            )
             self._waypoint_index = (self._waypoint_index + 1) % len(cfg.waypoints)
 
         return self.position

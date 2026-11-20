@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from dataclasses import replace
 
@@ -58,6 +59,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Text-only mode: print live state to the terminal instead of opening a plot window.",
     )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Log state transitions (region crossings, waypoints reached) to stderr.",
+    )
     return parser
 
 
@@ -80,6 +87,8 @@ def _load_config(args: argparse.Namespace) -> AppConfig:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG, format="%(name)s: %(message)s")
     config = _load_config(args)
     ticks = pace(simulate_ticks(config), config.simulation.dt, config.simulation.realtime_factor)
 

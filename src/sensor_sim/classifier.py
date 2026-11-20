@@ -46,9 +46,12 @@ when A and B overlap), Region A takes priority.
 
 from __future__ import annotations
 
+import logging
 from enum import Enum
 
 from sensor_sim.config import ClassifierConfig
+
+logger = logging.getLogger(__name__)
 
 
 class RegionState(str, Enum):
@@ -60,7 +63,8 @@ class RegionState(str, Enum):
 class _CrossingDetector:
     """Toggles an inside/outside flag on each edge crossing of one region."""
 
-    def __init__(self, crossing_threshold: float, rearm_threshold: float) -> None:
+    def __init__(self, name: str, crossing_threshold: float, rearm_threshold: float) -> None:
+        self._name = name
         self._crossing_threshold = crossing_threshold
         self._rearm_threshold = rearm_threshold
         self.inside = False
@@ -70,15 +74,26 @@ class _CrossingDetector:
         if self._armed and distance < self._crossing_threshold:
             self.inside = not self.inside
             self._armed = False
+            logger.debug(
+                "%s crossed at distance=%.3f -> inside=%s (now de-armed)",
+                self._name,
+                distance,
+                self.inside,
+            )
         elif not self._armed and distance > self._rearm_threshold:
             self._armed = True
+            logger.debug("%s re-armed at distance=%.3f", self._name, distance)
         return self.inside
 
 
 class RealTimeClassifier:
     def __init__(self, config: ClassifierConfig) -> None:
-        self._detector_a = _CrossingDetector(config.crossing_threshold, config.rearm_threshold)
-        self._detector_b = _CrossingDetector(config.crossing_threshold, config.rearm_threshold)
+        self._detector_a = _CrossingDetector(
+            "detector_a", config.crossing_threshold, config.rearm_threshold
+        )
+        self._detector_b = _CrossingDetector(
+            "detector_b", config.crossing_threshold, config.rearm_threshold
+        )
         self._state = RegionState.OUTSIDE
 
     @property
@@ -91,9 +106,19 @@ class RealTimeClassifier:
         inside_b = self._detector_b.update(dist_b)
 
         if inside_a:
-            self._state = RegionState.IN_A
+            new_state = RegionState.IN_A
         elif inside_b:
-            self._state = RegionState.IN_B
+            new_state = RegionState.IN_B
         else:
-            self._state = RegionState.OUTSIDE
+            new_state = RegionState.OUTSIDE
+
+        if new_state != self._state:
+            logger.debug(
+                "state %s -> %s (dist_a=%.3f, dist_b=%.3f)",
+                self._state.value,
+                new_state.value,
+                dist_a,
+                dist_b,
+            )
+        self._state = new_state
         return self._state
